@@ -66,8 +66,6 @@ def analyze(path: Path) -> tuple[list[Event], list[Session], int]:
             starts = active.get(event.player, [])
             if starts:
                 sessions.append(Session(event.player, starts.pop(0), event.timestamp))
-            else:
-                sessions.append(Session(event.player, event.timestamp, None))
     for player, starts in active.items():
         sessions.extend(Session(player, start, None) for start in starts)
     sessions.sort(key=lambda s: s.joined)
