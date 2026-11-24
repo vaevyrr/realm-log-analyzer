@@ -1,4 +1,4 @@
-name: Windows release
+name: Windows GUI release
 
 on:
   push:
@@ -25,19 +25,22 @@ jobs:
       - name: Install build tools
         run: python -m pip install --upgrade pip pyinstaller
 
-      - name: Build executable
-        run: pyinstaller --onefile --name realm-log-analyzer-windows-x64 realm_analyzer.py
+      - name: Build GUI executable
+        run: pyinstaller --onefile --windowed --name realm-log-analyzer-windows-x64 gui.py
 
-      - name: Verify executable
+      - name: Verify GUI executable
         shell: pwsh
         run: |
-          if (-not (Test-Path "dist/realm-log-analyzer-windows-x64.exe")) {
+          $exe = "dist/realm-log-analyzer-windows-x64.exe"
+          if (-not (Test-Path $exe)) {
             throw "Executable was not created."
           }
-          & "dist/realm-log-analyzer-windows-x64.exe" --help
-          if ($LASTEXITCODE -ne 0) {
-            throw "Executable failed its --help smoke test."
+          $p = Start-Process -FilePath $exe -PassThru
+          Start-Sleep -Seconds 5
+          if ($p.HasExited) {
+            throw "GUI process exited immediately with code $($p.ExitCode)."
           }
+          Stop-Process -Id $p.Id -Force
 
       - name: Create checksums
         shell: pwsh
@@ -55,9 +58,9 @@ jobs:
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ github.event_name == 'workflow_dispatch' && format('v0.1.{0}', github.run_number) || github.ref_name }}
+          tag_name: v0.1.${{ github.run_number }}
           target_commitish: ${{ github.sha }}
-          name: realm-log-analyzer-windows-x64 ${{ github.event_name == 'workflow_dispatch' && format('v0.1.{0}', github.run_number) || github.ref_name }}
+          name: realm-log-analyzer-windows-x64 v0.1.${{ github.run_number }}
           generate_release_notes: true
           fail_on_unmatched_files: true
           files: |
