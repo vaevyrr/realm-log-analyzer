@@ -12,11 +12,13 @@ permissions:
 jobs:
   build-windows:
     runs-on: windows-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v6
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
@@ -26,15 +28,38 @@ jobs:
       - name: Build executable
         run: pyinstaller --onefile --name realm-log-analyzer-windows-x64 realm_analyzer.py
 
+      - name: Verify executable
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "dist/realm-log-analyzer-windows-x64.exe")) {
+            throw "Executable was not created."
+          }
+          & "dist/realm-log-analyzer-windows-x64.exe" --help
+          if ($LASTEXITCODE -ne 0) {
+            throw "Executable failed its --help smoke test."
+          }
+
       - name: Create checksums
         shell: pwsh
         run: |
           (Get-FileHash "dist/realm-log-analyzer-windows-x64.exe" -Algorithm SHA256).Hash + "  realm-log-analyzer-windows-x64.exe" | Out-File dist/SHA256SUMS.txt
 
-      - name: Publish release
-        uses: softprops/action-gh-release@v2
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
         with:
+          name: realm-log-analyzer-windows-x64
+          path: |
+            dist/realm-log-analyzer-windows-x64.exe
+            dist/SHA256SUMS.txt
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && format('v0.1.{0}', github.run_number) || github.ref_name }}
+          target_commitish: ${{ github.sha }}
+          name: realm-log-analyzer-windows-x64 ${{ github.event_name == 'workflow_dispatch' && format('v0.1.{0}', github.run_number) || github.ref_name }}
           generate_release_notes: true
+          fail_on_unmatched_files: true
           files: |
             dist/realm-log-analyzer-windows-x64.exe
             dist/SHA256SUMS.txt
